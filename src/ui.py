@@ -52,7 +52,7 @@ def on_select_object(evt: gr.SelectData, detected_boxes, current_selection_indic
 def clear_selection():
     return "Đã xóa chọn. Tracking tất cả.", [], []
 
-def start_realtime_tracking(video_path, model_dd, conf_slide, iou_slide, selected_boxes_state, altitude, gimbal_pitch, focal_length, bb_style):
+def start_realtime_tracking(video_path, model_dd, conf_slide, iou_slide, selected_boxes_state, altitude, gimbal_pitch, focal_length, bb_style, prediction_horizon):
     if video_path is None:
         gr.Warning("Vui lòng upload video trước.")
         return
@@ -75,7 +75,8 @@ def start_realtime_tracking(video_path, model_dd, conf_slide, iou_slide, selecte
         drone_altitude=altitude,
         gimbal_pitch=gimbal_pitch,
         focal_length=focal_length,
-        bb_style=bb_style
+        bb_style=bb_style,
+        prediction_horizon_seconds=prediction_horizon
     )
 
     for frame in frame_generator:
@@ -114,6 +115,13 @@ def create_ui():
                     label="Bounding Box Style"
                 )
 
+                gr.Markdown("### Tham số Dự báo Quỹ đạo")
+                with gr.Row():
+                    prediction_horizon = gr.Slider(
+                        minimum=0.5, maximum=10.0, value=3.0, step=0.5,
+                        label="Prediction Horizon (s) - L = v × t_horizon"
+                    )
+
                 input_gt = gr.File(label="Tải lên Ground Truth (.txt, tùy chọn cho batch)")
 
                 gr.Markdown("### 3. Quét và Chọn đối tượng")
@@ -146,7 +154,7 @@ def create_ui():
         gallery.select(on_select_object, inputs=[detected_boxes_state, selected_indices_state], outputs=[selection_info, selected_indices_state, selected_boxes_state])
         btn_clear.click(clear_selection, outputs=[selection_info, selected_indices_state, selected_boxes_state])
         
-        btn_run_realtime.click(start_realtime_tracking, inputs=[input_video, model_dd, conf_slide, iou_slide, selected_boxes_state, altitude, gimbal_pitch, focal_length, bb_style], outputs=[output_image])
-        btn_run_batch.click(process_video, inputs=[input_video, input_gt, model_dd, conf_slide, iou_slide, selected_boxes_state, altitude, gimbal_pitch, focal_length, bb_style], outputs=[output_video_batch, output_metrics])
+        btn_run_realtime.click(start_realtime_tracking, inputs=[input_video, model_dd, conf_slide, iou_slide, selected_boxes_state, altitude, gimbal_pitch, focal_length, bb_style, prediction_horizon], outputs=[output_image])
+        btn_run_batch.click(process_video, inputs=[input_video, input_gt, model_dd, conf_slide, iou_slide, selected_boxes_state, altitude, gimbal_pitch, focal_length, bb_style, prediction_horizon], outputs=[output_video_batch, output_metrics])
 
     return demo

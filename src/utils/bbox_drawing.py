@@ -163,3 +163,144 @@ def draw_tech_callout(img, box, track_id, distance, is_target=False):
 
     cv2.putText(img, label_id, (txt_x, elbow_pt[1] - 5), font, font_scale, primary_color, font_thick)
     cv2.putText(img, label_dist, (txt_x, elbow_pt[1] + 18), font, font_scale, (200, 200, 200), 1)
+
+
+def draw_trajectory_vector(img, current_pos, future_pos, velocity_magnitude=None, prediction_horizon=3.0, scale_factor=1.0):
+    """
+    Vẽ vector dự báo quỹ đạo từ tâm đối tượng hiện tại đến vị trí dự báo.
+    Sử dụng mũi tên để biểu thị hướng và độ lớn của vận tốc.
+    
+    Args:
+        img: Hình ảnh input
+        current_pos: Tuple (x, y) - vị trí tâm hiện tại
+        future_pos: Tuple (x, y) - vị trí dự báo
+        velocity_magnitude: Float - độ lớn vận tốc (tùy chọn)
+        prediction_horizon: Float - khoảng thời gian dự báo (giây), default 3.0s
+        scale_factor: Float - hệ số tỉ lệ vector
+    """
+    import numpy as np
+    import math
+    
+    try:
+        current_pos = tuple(map(int, current_pos))
+        future_pos = tuple(map(int, future_pos))
+        
+        # Kiểm tra giá trị hợp lệ
+        if np.isnan([current_pos[0], current_pos[1], future_pos[0], future_pos[1]]).any():
+            return
+        
+        if current_pos == future_pos:  # Bỏ qua nếu không có chuyển động
+            return
+        
+        # Vẽ đường vector từ vị trí hiện tại đến vị trí dự báo (hướng chuyển động)
+        cv2.arrowedLine(img, future_pos, current_pos, (0, 255, 255), 2, tipLength=0.3)
+        
+        # Vẽ đường theo dõi (trajectory) nhẹ
+        cv2.circle(img, current_pos, 3, (0, 255, 255), -1)
+        cv2.circle(img, future_pos, 2, (255, 255, 0), -1)
+        
+        # Nếu có thông tin vận tốc, hiển thị độ lớn
+        if velocity_magnitude is not None and velocity_magnitude > 0.5:
+            # Tính toán vị trí hiển thị
+            mid_x = (current_pos[0] + future_pos[0]) // 2
+            mid_y = (current_pos[1] + future_pos[1]) // 2
+            
+            # Hiển thị độ lớn vận tốc
+            vel_text = f"v:{velocity_magnitude:.2f}px/f"
+            (text_w, text_h), _ = cv2.getTextSize(vel_text, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+            cv2.rectangle(img, (mid_x - text_w//2 - 2, mid_y - 15), 
+                         (mid_x + text_w//2 + 2, mid_y - 5), (0, 0, 0), -1)
+            cv2.putText(img, vel_text, (mid_x - text_w//2, mid_y - 8), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
+    except Exception:
+        # Bỏ qua nếu có lỗi rendering
+        pass
+
+
+def draw_motion_prediction_path(img, current_pos, future_waypoints, color=(0, 255, 255)):
+    """
+    Vẽ đường dự báo chuyển động qua các waypoint.
+    
+    Args:
+        img: Hình ảnh input
+        current_pos: Tuple (x, y) - vị trí hiện tại
+        future_waypoints: List of tuples [(x1, y1), (x2, y2), ...] - các điểm dự báo
+        color: Tuple RGB - màu sắc (mặc định: vàng lục)
+    """
+    if len(future_waypoints) < 1:
+        return
+    
+    try:
+        # Chuyển đổi tương dô sang int
+        current_pos = tuple(map(int, current_pos))
+        future_waypoints = [tuple(map(int, pt)) for pt in future_waypoints]
+        
+        # Vẽ đường poly từ vị trí hiện tại qua tất cả các waypoint
+        all_points = [current_pos] + future_waypoints
+        points_array = __import__('numpy').array(all_points, dtype=__import__('numpy').int32)
+        
+        # Vẽ đường liền mét
+        cv2.polylines(img, [points_array], False, color, 2)
+        
+        # Vẽ các waypoint
+        for i, pt in enumerate(future_waypoints):
+            radius = 4 - i
+            cv2.circle(img, pt, max(radius, 2), color, -1)
+    except Exception:
+        # Bỏ qua nếu có lỗi rendering
+        pass
+
+
+def draw_state_estimation_info(img, track_id, current_pos, velocity_x, velocity_y):
+    """
+    Hiển thị thông tin State Estimation:
+    - Vận tốc X, Y
+    - Độ lớn vận tốc
+    - Góc chuyển động
+    
+    Args:
+        img: Hình ảnh input
+        track_id: ID của tracker
+        current_pos: Tuple (x, y) - vị trí tâm
+        velocity_x: Vận tốc theo trục X
+        velocity_y: Vận tốc theo trục Y
+    """
+    import math
+    
+    try:
+        current_pos = tuple(map(int, current_pos))
+        
+        # Tính toán thông số vận tốc
+        velocity_magnitude = math.sqrt(velocity_x**2 + velocity_y**2)
+        if velocity_magnitude > 0:
+            angle = math.degrees(math.atan2(velocity_y, velocity_x))
+        else:
+            angle = 0
+        
+        # Vị trí hiển thị thông tin
+        info_x = current_pos[0] + 15
+        info_y = current_pos[1] - 25
+        
+        # Hiển thị thông tin State Estimation
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.4
+        font_thickness = 1
+        
+        # Vận tốc X (COMMENTED OUT - Đã tắt hiển thị)
+        # vel_x_text = f"Vx:{velocity_x:.2f}"
+        # cv2.putText(img, vel_x_text, (info_x, info_y), font, font_scale, (255, 100, 0), font_thickness)
+        
+        # Vận tốc Y
+        vel_y_text = f"Vy:{velocity_y:.2f}"
+        cv2.putText(img, vel_y_text, (info_x, info_y + 15), font, font_scale, (100, 255, 0), font_thickness)
+        
+        # Độ lớn vận tốc
+        vel_mag_text = f"|V|:{velocity_magnitude:.2f}"
+        cv2.putText(img, vel_mag_text, (info_x, info_y + 30), font, font_scale, (0, 255, 255), font_thickness)
+        
+        # Góc chuyển động
+        angle_text = f"θ:{angle:.1f}°"
+        cv2.putText(img, angle_text, (info_x, info_y + 45), font, font_scale, (255, 0, 255), font_thickness)
+    except Exception:
+        # Bỏ qua nếu có lỗi rendering
+        pass

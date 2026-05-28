@@ -54,7 +54,7 @@ uav_tracking_project/
     ```
 ## Hướng dẫn Chạy
 1. **Tải Mô Hình YOLOv8:**
-   Tải các file trọng số mô hình: https://drive.google.com/drive/folders/1u7Ez44U2t3bCcb2YwpMhcN_xASYZbMUV?usp=sharing
+   Tải các file trọng số mô hình: https://drive.google.com/drive/folders/1mcPH0b1xjLYx5SMhum8edtx-ZidA_tbn?usp=sharing
 2. **Chạy Giao Diện Người Dùng:**
    ```bash
    python main.py

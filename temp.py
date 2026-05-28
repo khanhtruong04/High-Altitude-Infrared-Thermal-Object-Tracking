@@ -42,7 +42,7 @@ def rgb_to_grayscale_video(
 
     cap.release()
     out.release()
-    print("✅ Hoàn tất chuyển video sang grayscale")
+    print(" Hoàn tất chuyển video sang grayscale")
 
 # Ví dụ sử dụng
 rgb_to_grayscale_video(
